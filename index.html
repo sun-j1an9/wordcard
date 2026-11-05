@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#FBFAF6">
+<title>背单词</title>
+<style>
+  :root{
+    --bg:#FBFAF6;
+    --ink:#16150F;
+    --ink2:#4A4841;
+    --muted:#9C9A92;
+    --line:#ECEAE3;
+    --track:#EEECE5;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    height:100vh;height:100dvh;
+    overflow:hidden;
+    overscroll-behavior:none;
+  }
+  [hidden]{display:none!important}
+  button{font-family:inherit}
+
+  #app{
+    position:relative;
+    isolation:isolate;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    width:100%;
+    max-width:520px;
+    margin:0 auto;
+    height:100vh;height:100dvh;
+    background:var(--bg);
+  }
+
+  /* ---------- 顶栏 ---------- */
+  .topbar{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:calc(16px + env(safe-area-inset-top)) 22px 6px;
+  }
+  .meta{display:flex;align-items:baseline;gap:9px;min-width:0}
+  .day{font-size:15px;font-weight:600;letter-spacing:.01em;white-space:nowrap}
+  .count{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .text-btn{
+    appearance:none;border:0;background:none;
+    font-size:14px;color:#6E6B62;
+    padding:8px 0 8px 16px;cursor:pointer;
+  }
+  .text-btn:active{opacity:.55}
+
+  .track{
+    flex:0 0 auto;
+    height:2px;
+    margin:6px 22px 0;
+    background:var(--track);
+    border-radius:2px;
+    overflow:hidden;
+  }
+  .fill{
+    height:100%;
+    width:0;
+    background:var(--ink);
+    border-radius:2px;
+    transition:width .3s ease;
+  }
+
+  /* ---------- 卡片区 ---------- */
+  .stage{position:relative;flex:1 1 auto;min-height:0}
+
+  .card-view{
+    position:absolute;inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:16px 26px 96px;
+    text-align:center;
+    cursor:pointer;
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:manipulation;
+  }
+  .word{
+    font-size:clamp(42px,12vw,56px);
+    font-weight:600;
+    letter-spacing:-.02em;
+    line-height:1.08;
+    color:var(--ink);
+    word-break:break-word;
+    max-width:100%;
+  }
+  .meaning-wrap{
+    width:100%;
+    max-width:340px;
+    margin-top:26px;
+    opacity:0;
+    transform:translateY(10px);
+    transition:opacity .22s ease,transform .22s ease;
+    pointer-events:none;
+  }
+  .card-view.revealed .meaning-wrap{opacity:1;transform:none}
+  .rule{width:26px;height:1.5px;background:#DCD8CC;margin:0 auto 18px;border-radius:2px}
+  .meaning{
+    font-size:21px;
+    line-height:1.6;
+    letter-spacing:.01em;
+    color:var(--ink2);
+  }
+  .hint{
+    position:absolute;
+    left:0;right:0;bottom:26px;
+    text-align:center;
+    font-size:13px;
+    letter-spacing:.02em;
+    color:#ABA89E;
+    transition:opacity .2s ease;
+    pointer-events:none;
+  }
+  .card-view.revealed .hint{opacity:0}
+
+  /* ---------- 完成页 ---------- */
+  .done-view{
+    position:absolute;inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:0 28px 48px;
+    text-align:center;
+  }
+  .done-badge{
+    width:44px;height:44px;
+    border-radius:50%;
+    border:1px solid #D9D5C8;
+    display:grid;place-items:center;
+    color:var(--ink);
+    font-size:17px;
+    margin-bottom:26px;
+  }
+  .done-title{font-size:25px;font-weight:600;letter-spacing:-.01em;margin:0}
+  .done-sub{font-size:13px;color:var(--muted);margin:12px 0 0;letter-spacing:.02em}
+  .done-actions{
+    display:flex;flex-direction:column;gap:10px;
+    width:100%;max-width:300px;margin-top:34px;
+  }
+  .act-btn{
+    width:100%;height:52px;
+    border-radius:15px;
+    font-size:15px;font-weight:600;letter-spacing:.03em;
+    border:0;cursor:pointer;
+    transition:transform .1s ease,opacity .15s ease;
+  }
+  .act-btn:active{transform:scale(.985)}
+  .act-btn.primary{background:var(--ink);color:#fff}
+  .act-btn.secondary{background:transparent;color:var(--ink2);border:1px solid #E2DFD6;font-weight:500}
+
+  /* ---------- 底部按钮 ---------- */
+  .bottom{
+    flex:0 0 auto;
+    padding:10px 22px calc(18px + env(safe-area-inset-bottom));
+  }
+  .primary{
+    width:100%;height:56px;
+    border:0;border-radius:16px;
+    background:var(--ink);color:#fff;
+    font-size:16px;font-weight:600;letter-spacing:.04em;
+    cursor:pointer;
+    transition:transform .1s ease,background .2s ease,color .2s ease;
+  }
+  .primary:active:not(:disabled){transform:scale(.985)}
+  .primary:disabled{
+    background:#EBE9E2;
+    color:#B7B4AA;
+    cursor:default;
+  }
+
+  /* ---------- 遮罩 & 抽屉 ---------- */
+  .scrim{
+    position:absolute;inset:0;z-index:40;
+    background:rgba(22,21,15,.32);
+    opacity:0;pointer-events:none;
+    transition:opacity .26s ease;
+  }
+  .scrim.show{opacity:1;pointer-events:auto}
+
+  .sheet{
+    position:absolute;left:0;right:0;bottom:0;z-index:50;
+    background:#fff;
+    border-radius:22px 22px 0 0;
+    transform:translateY(102%);
+    transition:transform .3s cubic-bezier(.2,.8,.2,1);
+    max-height:84%;
+    display:flex;flex-direction:column;
+    padding-bottom:env(safe-area-inset-bottom);
+    box-shadow:0 -12px 40px rgba(30,28,20,.12);
+  }
+  .sheet.open{transform:translateY(0)}
+  .sheet-head{
+    flex:0 0 auto;
+    display:flex;align-items:flex-start;justify-content:space-between;
+    padding:20px 22px 14px;
+  }
+  .sheet-head h2{font-size:17px;font-weight:600;margin:0;letter-spacing:.01em}
+  .sheet-head p{font-size:12px;color:var(--muted);margin:6px 0 0;letter-spacing:.02em}
+  .icon-btn{
+    appearance:none;border:0;background:none;
+    font-size:15px;color:#A5A298;
+    padding:2px 0 2px 12px;line-height:1;cursor:pointer;
+  }
+  .sheet-body{flex:1 1 auto;overflow-y:auto;padding:0 14px 16px;-webkit-overflow-scrolling:touch}
+  .sheet-foot{
+    flex:0 0 auto;
+    border-top:1px solid #F3F1EA;
+    padding:4px 22px;
+  }
+  .row-btn{
+    width:100%;text-align:left;
+    background:none;border:0;padding:15px 0;
+    font-size:15px;color:var(--ink2);cursor:pointer;
+  }
+  .row-btn:active{opacity:.6}
+
+  .day-row{
+    width:100%;
+    display:flex;align-items:center;gap:12px;
+    background:none;border:0;
+    border-top:1px solid #F4F2EC;
+    padding:16px 8px;
+    text-align:left;cursor:pointer;
+    border-radius:10px;
+  }
+  .day-row:first-child{border-top:0}
+  .day-row:active{background:#F8F7F2}
+  .day-row.is-locked{opacity:.42;pointer-events:none}
+  .d-no{font-size:15px;font-weight:600;color:var(--ink);width:76px;flex:0 0 auto}
+  .d-meta{flex:1 1 auto;font-size:12.5px;color:var(--muted);letter-spacing:.02em}
+  .d-arrow{flex:0 0 auto;color:#C8C5BA;font-size:18px;line-height:1}
+
+  /* ---------- 设置 ---------- */
+  .set-body{padding:0 22px 22px}
+  .set-block{padding:16px 0;border-top:1px solid #F4F2EC}
+  .set-block:first-child{border-top:0;padding-top:6px}
+  .set-label{font-size:14px;font-weight:600;margin-bottom:12px}
+  .chips{display:flex;gap:8px}
+  .chip{
+    appearance:none;
+    padding:10px 20px;
+    border-radius:999px;
+    border:1px solid #E4E1D8;
+    background:#fff;
+    font-size:14px;color:var(--ink2);
+    cursor:pointer;
+    transition:background .15s,color .15s,border-color .15s;
+  }
+  .chip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .set-note{font-size:12.5px;line-height:1.65;color:var(--muted);margin:10px 0 0;letter-spacing:.01em}
+  .danger-btn{
+    width:100%;height:48px;border-radius:13px;
+    border:1px solid #EADDD8;
+    background:#fff;
+    color:#A94A3D;
+    font-size:14.5px;font-weight:500;
+    cursor:pointer;
+  }
+  .danger-btn:active{background:#FCF4F2}
+
+  /* ---------- 桌面预览：手机框 ---------- */
+  @media (min-width:640px){
+    body{
+      background:#E8E6DF;
+      display:grid;
+      place-items:center;
+    }
+    #app{
+      width:390px;
+      height:min(820px,calc(100dvh - 56px));
+      border-radius:46px;
+      box-shadow:
+        0 40px 90px -24px rgba(30,28,20,.42),
+        0 0 0 1px rgba(0,0,0,.05);
+    }
+  }
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="背单词">
+</head>
+<body>
+
+<div id="app">
+  <header class="topbar">
+    <div class="meta">
+      <span class="day" id="dayLabel">第 1 天</span>
+      <span class="count" id="countLabel">0 / 50</span>
+    </div>
+    <button class="text-btn" id="reviewBtn" type="button">复习</button>
+  </header>
+
+  <div class="track"><div class="fill" id="progressFill"></div></div>
+
+  <main class="stage" id="stage">
+    <section class="card-view" id="cardView">
+      <div class="word" id="wordEl"></div>
+      <div class="meaning-wrap">
+        <div class="rule"></div>
+        <div class="meaning" id="meaningEl"></div>
+      </div>
+      <div class="hint" id="hintEl">轻点卡片，看释义</div>
+    </section>
+
+    <section class="done-view" id="doneView" hidden>
+      <div class="done-badge">✓</div>
+      <h1 class="done-title" id="doneTitle"></h1>
+      <p class="done-sub" id="doneSub"></p>
+      <div class="done-actions" id="doneActions"></div>
+    </section>
+  </main>
+
+  <footer class="bottom" id="bottomBar">
+    <button class="primary" id="nextBtn" type="button" disabled>下一个</button>
+  </footer>
+
+  <div class="scrim" id="scrim"></div>
+
+  <section class="sheet" id="daySheet" aria-hidden="true">
+    <div class="sheet-head">
+      <div>
+        <h2>按天复习</h2>
+        <p>随机顺序重过某一天，不影响学习进度</p>
+      </div>
+      <button class="icon-btn" id="closeSheet" type="button">✕</button>
+    </div>
+    <div class="sheet-body" id="dayList"></div>
+    <div class="sheet-foot">
+      <button class="row-btn" id="openSettings" type="button">设置</button>
+    </div>
+  </section>
+
+  <section class="sheet" id="settingsSheet" aria-hidden="true">
+    <div class="sheet-head">
+      <div>
+        <h2>设置</h2>
+        <p>数据只存本机</p>
+      </div>
+      <button class="icon-btn" id="closeSettings" type="button">✕</button>
+    </div>
+    <div class="sheet-body set-body">
+      <div class="set-block">
+        <div class="set-label">每天新词数</div>
+        <div class="chips" id="batchChips">
+          <button class="chip" type="button" data-batch="20">20</button>
+          <button class="chip" type="button" data-batch="50">50</button>
+          <button class="chip" type="button" data-batch="100">100</button>
+        </div>
+        <p class="set-note">改动后按新数量重新划天，已学进度保留。</p>
+      </div>
+      <div class="set-block">
+        <div class="set-label">安装到手机</div>
+        <p class="set-note">iPhone：Safari 打开 → 分享 → 添加到主屏幕。Android：Chrome 打开 → 右上菜单 → 安装应用。</p>
+      </div>
+      <div class="set-block">
+        <div class="set-label">词表</div>
+        <p class="set-note">四级核心 1654 词：高频 990 · 基础 300 · 偶考 200 · 关联词 164，共 34 天。顺序为 高频 → 基础 → 偶考，释义取每条的第一个义项。</p>
+      </div>
+      <div class="set-block">
+        <button class="danger-btn" id="resetBtn" type="button">清空学习进度</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* 词表：英文 + 最常用的一条中文释义（文档顺序，含 ☞ 关联词） */
+  var WORDS = [
+    ["peril","严重危险"],["experienced","有经验的"],["confess","承认"],["murder","谋杀"],["mortgage","按揭贷款"],["cite","引用"],
+    ["account","账户"],["accountable","负责任的"],["discount","折扣"],["charge","收费"],["organism","有机体"],["journalism","新闻业"],
+    ["journal","杂志"],["capital","资本"],["credit","信用"],["incredible","难以置信的"],["civil","公民的"],["citizen","市民"],
+    ["civilization","文明"],["campaign","活动"],["campus","校园"],["barrier","屏障"],["squeeze","挤"],["aptitude","能力"],
+    ["adapt","改编"],["phase","阶段"],["cabinet","橱柜"],["blanket","毛毯"],["bundle","捆"],["sparkle","光"],
+    ["startle","使惊吓"],["packet","小包"],["scenery","风景"],["anchor","锚"],["custom","风俗"],["counter","柜台"],
+    ["shelter","隐蔽处"],["hinder","妨碍"],["contend","声称"],["content","内容"],["imply","暗示"],["implicit","含蓄的"],
+    ["implication","可能的影响"],["flexible","灵活的"],["debate","讨论"],["declare","声明"],["detail","细节"],["determine","决定"],
+    ["devote","奉献"],["devotion","奉献"],["decline","减少"],["medium","媒介"],["immediate","立即的"],["intermediate","中间的"],
+    ["command","要求"],["recommend","推荐"],["minister","部长"],["minor","较小的"],["complex","复杂的"],["prominent","突出的"],
+    ["edition","版本"],["editor","编辑"],["radical","激进的"],["ample","充足的"],["voyage","航行"],["bonus","奖金"],
+    ["migrate","迁徙"],["migrant","候鸟"],["obese","肥胖的"],["bid","出价"],["glory","荣誉"],["judgement","判断"],
+    ["liquid","液体"],["diminish","减少"],["delete","删除"],["delighted","高兴的"],["deny","否定"],["department","部门"],
+    ["deposit","储存"],["despite","尽管"],["domestic","国内的"],["partial","部分的"],["depart","离开"],["departure","离开"],
+    ["derive","起源"],["deprive","剥夺"],["particle","粒子"],["particularly","特别地"],["circuit","环行"],["circular","圆的"],
+    ["circulate","（使）循环"],["extend","延长"],["extension","扩大"],["extensive","广阔的"],["comparative","比较的"],["appear","出现"],
+    ["appearance","外貌"],["parade","游行"],["separate","单独的"],["parallel","平行的"],["rhythm","节奏"],["drawback","缺点"],
+    ["graceful","优美的"],["gratitude","感谢"],["peculiar","奇怪的"],["guidance","指导"],["significance","意义"],["significance","重要性"],
+    ["tolerate","忍受"],["tolerance","忍受"],["tolerant","容忍的"],["assistance","协助"],["prohibit","禁止"],["prompt","迅迷的"],
+    ["propose","提议"],["protest","抗议"],["provided","以……为条件"],["provision","预备"],["proclaim","宣布"],["provoke","激怒"],
+    ["purchase","购买"],["pursue","追求"],["pursuit","追赶"],["defeat","战胜"],["deceive","欺骗"],["defy","反抗"],
+    ["anxious","焦虑的"],["harmony","融洽"],["harmonious","和谐的"],["infect","传染"],["infectious","传染的"],["spacious","宽敞的"],
+    ["conscientious","勤勉认真的"],["prosperous","繁荣的"],["prosperity","繁荣"],["ambitious","有雄心壮志的"],["obvious","明显的"],["tedious","冗长乏味的"],
+    ["conscious","意识到的"],["consciousness","意识"],["despair","绝望"],["detective","侦探"],["detect","发现"],["decay","衰退"],
+    ["tremendous","巨大的"],["marvelous","让人惊讶的"],["jealous","妒忌的"],["numerous","为数众多的"],["poison","毒药"],["poisonous","有毒的"],
+    ["demonstrate","证明"],["deputy","副手"],["continuous","连续不断的"],["enormous","巨大的"],["authority","权力"],["aware","意识到的"],
+    ["ashamed","羞愧的"],["amuse","逗乐"],["deliberate","故意的"],["deliberately","故意"],["award","奖品"],["deteriorate","恶化"],
+    ["arise","出现"],["arouse","唤醒"],["concept","概念"],["avenue","大街"],["capable","有能力的"],["occupy","占领"],
+    ["occupation","占领"],["perceive","理解"],["reception","接待（处）"],["defense","防卫"],["occasion","时机"],["occasional","偶然的"],
+    ["cable","缆"],["region","地区"],["regulate","管理"],["royal","王室的"],["bankrupt","倒闭"],["corrupt","贪污的"],
+    ["disrupt","扰乱"],["interrupt","打断"],["moral","道德的"],["orbit","环绕……运行"],["optimism","乐观（主义）"],["antique","文物"],
+    ["nourish","滋养"],["inferior","下等的"],["optional","可选择的"],["adoption","采用"],["geology","地质学"],["sensible","明智的"],
+    ["sensitive","敏感的"],["consent","同意"],["resent","愤恨"],["represent","代表"],["representative","典型的"],["fraction","小部分"],
+    ["fragment","碎片"],["principal","主要的"],["principle","原则"],["premier","首相"],["preferable","更可取的"],["preference","偏爱"],
+    ["preliminary","预备的"],["prejudice","偏见"],["pretend","假装"],["prevent","预防"],["prevail","优胜"],["precise","精确的"],
+    ["invade","入侵"],["index","索引"],["indicate","表明"],["thoughtful","沉思的"],["considerate","体贴的"],["faithful","忠诚的"],
+    ["fruitful","成果丰硕的"],["calendar","日历"],["scholar","学者"],["lunar","月亮的"],["plentiful","丰富的"],["skillful","灵巧的"],
+    ["dynamic","动力的"],["dramatic","戏剧的"],["magnetic","有磁性的"],["alcohol","酒精"],["diplomatic","外交上的"],["idealistic","理想主义的"],
+    ["strategic","战略性的"],["ethic","道德规范"],["pessimistic","悲观的"],["romantic","浪漫的"],["academic","学术的"],["characteristic","特征"],
+    ["cubic","立方形的"],["brochure","手册"],["assure","使确信"],["ensure","保证"],["insure","投保"],["insurance","保险"],
+    ["panel","嵌板"],["punctual","按时的"],["input","输入"],["install","安装"],["inclusive","包含广阔的"],["instant","立即的"],
+    ["instinct","天性"],["institute","机构"],["insult","侮辱"],["investigate","调查"],["insane","精神失常的"],["implement","实行"],
+    ["impulse","冲动"],["inflate","充气"],["inflation","通货膨胀"],["insight","洞察力"],["intact","完整的"],["intake","吸收"],
+    ["intrude","闯入"],["irregular","不规则的"],["irrigate","灌溉"],["object","物体"],["oblige","迫使"],["obstacle","障碍"],
+    ["vague","含糊的"],["error","错误"],["miserable","痛苦的"],["construct","建造"],["structure","结构"],["destruction","破坏"],
+    ["instruction","教授"],["instrument","仪器"],["navy","海军"],["navigate","导肮"],["pump","泵"],["prescribe","开（处方）"],
+    ["artificial","人造的"],["privilege","特权"],["infer","推断"],["vital","至关重要的"],["vigor","活力"],["vigorous","充满活力的"],
+    ["vivid","生动的"],["enclose","围住"],["exclusively","排外地"],["mutual","相互的"],["moisture","潮气"],["moist","潮湿的"],
+    ["feature","特征"],["procedure","程序"],["manufacture","（大规模）制造"],["restrict","限制"],["stimulate","刺激"],["venture","（风险的）企业"],
+    ["innovate","创新"],["innovation","创新"],["innovative","革新的"],["violate","侵犯"],["delicate","精致的"],["estimate","估计"],
+    ["evaluate","评估"],["imitate","模仿"],["penetrate","穿过"],["adequate","足够的"],["anticipate","预料"],["candidate","候选人"],
+    ["furnish","布置家具"],["furniture","家具"],["pirate","海盗"],["vibrate","（使）颤动"],["coordinate","（使）协调"],["isolate","使隔离"],
+    ["accelerate","（使）加速"],["justice","公正"],["adjust","调整"],["portion","部分"],["petrol","汽油"],["velocity","速度"],
+    ["integrity","完整"],["density","密度"],["dense","密集的"],["elastic","有弹性的"],["dignity","尊严"],["forbid","禁止"],
+    ["minority","少数"],["nationality","国籍"],["arrange","整理"],["register","登记"],["joint","联合的"],["incline","倾向于"],
+    ["facility","设备"],["penalty","惩罚"],["collaborate","合作"],["collaboration","合作"],["elaborate","精心制作的"],["multiply","乘"],
+    ["forecast","预测"],["foremost","最重要的"],["legislate","立法"],["refrigerator","冰箱"],["ballot","无记名投票"],["gravity","重力"],
+    ["discard","丢弃"],["distribute","分配"],["discharge","释放"],["discriminate","辨别"],["disguise","伪装"],["disgust","厌恶"],
+    ["integrate","（使）成为整体"],["disintegrate","（使）碎裂"],["distress","悲痛"],["dispute","争辩"],["dilemma","（进退两难的）窘境"],["dioxide","二氧化物"],
+    ["disobey","不服从"],["distinct","明显的"],["distinction","差别"],["distinguished","卓越的"],["genius","天才"],["genuine","真的"],
+    ["gene","基因"],["abolish","废除"],["dispatch","派遣"],["absent","缺少的"],["cease","停止"],["proceed","继续进行"],
+    ["procession","队伍"],["exceed","超出"],["excess","过量"],["excessive","过分的"],["abuse","滥用"],["absorb","吸收"],
+    ["abstract","摘要"],["solemn","庄严的"],["practically","实际地"],["pioneer","先驱者"],["routine","常规"],["marine","海的"],
+    ["ideal","理想的"],["vehicle","车辆"],["intimate","亲密的"],["realistic","现实的"],["surge","激增"],["reckon","认为"],
+    ["ozone","臭氧"],["display","陈列"],["habitat","栖息地"],["inhabit","居住于"],["inhabitant","居民"],["vertical","垂直的"],
+    ["convert","（使）转变"],["converse","交谈"],["conversation","（非正式的）谈话"],["version","版本"],["confine","限制"],["finite","有限的"],
+    ["infinite","无限的"],["define","使明确"],["definition","定义"],["definite","明确的"],["reverse","颠倒"],["diverse","不同的"],
+    ["successive","连续的"],["refine","精炼"],["refined","精炼的"],["municipal","市政的"],["unique","唯一的"],["community","社区"],
+    ["commune","公社"],["interval","间隔"],["universal","普遍的"],["nuclear","原子核的"],["superficial","表面的"],["supreme","最高的"],
+    ["superior","较高的"],["explode","（使）爆炸"],["explosion","爆炸"],["intelligent","聪明的"],["intelligence","才智"],["interfere","干涉"],
+    ["interior","内部的"],["interpret","解释"],["enterprise","企业"],["entrepreneur","企业家"],["exhaust","筋疲力尽"],["exhausted","筋疲力尽的"],
+    ["exaggerate","夸大"],["exclaim","呼喊"],["execute","实施"],["executive","主管领导"],["explicit","明确的"],["extinguish","扑灭"],
+    ["exploit","利用"],["exert","运用"],["exhibit","展览"],["reliability","可靠性"],["reliable","可靠的"],["stability","稳定（性）"],
+    ["stable","稳定的"],["fertile","肥沃的"],["fertilizer","肥料"],["hostile","敌对的"],["restrain","约束"],["expert","专家"],
+    ["expertise","专门的知识或技能"],["prior","先前的"],["priority","优先"],["retail","零售"],["recruit","招募"],["refrain","克制"],
+    ["renovate","翻新"],["revenue","财政收入"],["remedy","治疗方法"],["rescue","援救"],["resort","求助"],["reveal","暴露"],
+    ["precaution","预防措施"],["reinforce","增援"],["refresh","使恢复"],["restore","恢复"],["retreat","后退"],["revolt","反抗"],
+    ["speculate","推测"],["respective","各自的"],["rebel","反抗"],["corporation","公司"],["inspect","检查"],["perspective","观点"],
+    ["prospect","展望"],["specific","明确的"],["specialize","专攻"],["recreation","娱乐"],["increasingly","日益增长地"],["vacant","空的"],
+    ["vacuum","真空"],["vanish","突然不见"],["literal","字面意义的"],["decent","体面的"],["inherit","继承（遗产）"],["dimension","维度"],
+    ["immense","巨大的"],["utilize","利用"],["utility","实用"],["species","物种"],["decorate","装饰"],["humble","谦逊的"],
+    ["equality","相等"],["equivalent","等价的"],["sequence","顺序"],["consequence","结果"],["consequently","因此"],["subsequent","随后的"],
+    ["sympathize","同情"],["sympathetic","同情的"],["passion","激情"],["passionate","狂热的"],["passive","被动的"],["format","形式"],
+    ["inform","通知"],["reform","改良"],["formulate","规划"],["federal","联邦的"],["extraordinary","非同寻常的"],["margin","边缘"],
+    ["fluctuate","波动"],["fluid","液体"],["fluent","流利的"],["suspend","推迟"],["suspect","怀疑"],["temporary","暂时的"],
+    ["contemporary","当代的"],["tremble","发抖"],["terminal","末端的"],["majority","多数"],["collapse","倒塌"],["colleague","同事"],
+    ["collision","碰撞"],["comprise","包含"],["compromise","妥协"],["compact","紧凑的"],["commence","开始"],["comply","服从"],
+    ["concrete","实在的"],["condemn","谴责"],["contest","竞赛"],["contract","合同"],["context","上下文"],["conceal","隐藏"],
+    ["condense","使浓缩"],["confirm","确认"],["constitute","组成"],["contact","接触"],["convey","表达"],["convince","使确信"],
+    ["conflict","冲突"],["consolidate","（使）巩固"],["contaminate","污染"],["council","理事会"],["coherence","一致"],["coherent","合乎逻辑的"],
+    ["conference","会议"],["conscience","良心"],["existence","存在"],["compel","强迫"],["compulsory","强制性的"],["expel","开除"],
+    ["appeal","呼吁"],["counsel","建议"],["consult","咨询"],["consultant","顾问"],["category","种类"],["combat","搏斗"],
+    ["compress","压缩"],["depress","使沮丧"],["depression","抑郁"],["annual","每年的"],["section","部门"],["segment","部分"],
+    ["liberate","解放"],["liberty","自由"],["deliver","递送"],["contradict","反驳"],["contrary","相反的"],["contrast","对比"],
+    ["controversy","争论"],["reproduce","繁殖"],["transmission","传递"],["mission","任务"],["commission","委员会"],["omit","省略"],
+    ["dismiss","解雇"],["commit","犯罪"],["committee","委员会"],["settlement","和解"],["supplement","补充"],["installment","分期付款"],
+    ["conduct","组织"],["shortage","不足"],["drain","流光"],["drainage","排水"],["beverage","饮料"],["arbitrary","随意的"],
+    ["boundary","分界线"],["elementary","基本的"],["monetary","货币的"],["voluntary","自愿的"],["acute","十分严重的"],["hospitable","好客的"],
+    ["injection","注射"],["reject","拒绝"],["catalogue","目录"],["sponsor","赞助商"],["correspond","相符合"],["corresponding","符合的"],
+    ["decade","十年"],["aggressive","有进取心的"],["congress","代表大会"],["resign","辞职"],["mount","登上"],["capital","首都"],
+    ["sacrifice","牺牲"],["accord","符合"],["accordance","一致"],["accordingly","相应地"],["enthusiasm","热情"],["enthusiastic","热情的"],
+    ["logic","逻辑"],["logical","符合逻辑的"],["embrace","拥抱"],["emphasize","强调"],["encounter","遭遇"],["endure","忍受"],
+    ["enforce","强制实施"],["engage","从事"],["entitle","给……权利"],["envy","嫉妒"],["entry","入口处"],["enlighten","启发"],
+    ["enroll","注册"],["property","财产"],["feasible","可行的"],["tangible","有形的"],["intangible","无形的"],["administer","管理"],
+    ["advocate","主张"],["accumulate","积累"],["acquaint","使熟悉"],["acquaintance","熟人"],["accuse","控告"],["appetite","食欲"],
+    ["approximate","近似的"],["acknowledge","承认"],["approach","接近"],["attribute","把……归因于"],["arrest","逮捕"],["annoy","使恼怒"],
+    ["asset","资产"],["evident","明显的"],["evidence","证据"],["visible","可见的"],["invisible","看不见的"],["vision","视力"],
+    ["devise","发明"],["revise","修订"],["witness","目击者"],["summit","最高点"],["assume","假定"],["democracy","民主"],
+    ["democratic","民主的"],["ultimate","最后的"],["disturb","扰乱"],["frontier","边境"],["confront","使面对"],["withdraw","撤回"],
+    ["withstand","抵抗"],["evolution","进化"],["volume","卷"],["revolution","革命"],["circumstance","条件"],["opponent","对手"],
+    ["oppose","反对"],["synthetic","综合的"],["symptom","症状"],["resemble","像"],["assemble","集合"],["capacity","容量"],
+    ["static","静止的"],["status","地位"],["stadium","体育场"],["statistic","统计数据"],["estate","庄园"],["instance","例子"],
+    ["insist","坚持"],["consist","由…组成"],["resist","抵抗"],["resistance","反对"],["resistant","抵抗的"],["sightseeing","观光"],
+    ["surrounding","周围的"],["calculating","精明的"],["imposing","令人印象深刻的"],["regarding","关于"],["concerning","关于"],["sophisticated","久经世故的"],
+    ["advanced","先进的"],["steady","稳定的"],["sticky","黏性的"],["guilty","有罪的"],["greedy","贪婪的"],["rational","合理的"],
+    ["irrational","不合理的"],["faulty","有错误的"],["slippery","滑的"],["dictate","口述"],["dictation","听写"],["predict","预测"],
+    ["initiate","开始"],["initial","最初的"],["initiative","倡议"],["ambition","野心"],["veteran","老兵"],["fate","命运"],
+    ["fatal","致命的"],["flame","火焰"],["phenomenon","现象"],["foundation","基础"],["fund","基金"],["fundamental","基础的"],
+    ["alternative","供选择的"],["underline","强调"],["undergo","经历"],["undertake","承担"],["jury","陪审团"],["injure","伤害"],
+    ["injury","伤害"],["rigid","严格的"],["valid","有效的"],["acid","酸的"],["splendid","辉煌的"],["compatible","兼容的"],
+    ["neutral","中立的"],["conventional","传统的"],["typical","典型的"],["arrival","抵达"],["proof","证明"],["waterproof","防水的"],
+    ["reputation","名誉"],["resolution","决议"],["resolve","解决"],["temptation","诱惑"],["vocation","职业"],["cooperation","合作"],
+    ["frustration","挫折"],["pension","养老金"],["invade","入侵"],["invasion","入侵"],["institution","机构"],["cohesion","结合"],
+    ["conjunction","连接词"],["convention","习俗"],["constitution","宪法"],["consumption","消耗"],["combination","组合"],["submit","呈递"],
+    ["substantial","大量的"],["substitute","代替人"],["substance","物质"],["subject","主题"],["lessen","减少"],["strengthen","加强"],
+    ["broaden","（使）变宽"],["maiden","少女"],["submarine","水下的"],["submerge","淹没"],["conquer","征服"],["conquest","征服"],
+    ["threaten","威胁"],["fasten","系牢"],["enquire","询问"],["enquiry","询问"],["essence","本质"],["essential","基本的"],
+    ["permanent","永久的"],["persist","坚持"],["persuade","劝说"],["persevere","坚持"],["perseverance","毅力"],["preserve","保护"],
+    ["reserve","预定"],["deserve","值得"],["observe","观察"],["conserve","节约"],["conservative","保守的"],["mislead","误导"],
+    ["criticize","批评"],["criticism","批评"],["critical","批判的"],["crisis","危机"],["criterion","标准"],["casual","漫不经心的"],
+    ["indifferent","漠不关心的"],["dissolve","使溶解"],["awesome","令人惊叹的"],["modest","谦虚的"],["moderate","适中的"],["commodity","商品"],
+    ["accommodate","提供住宿"],["accommodation","住处"],["miracle","奇迹"],["marvel","奇迹"],["marvelous","不可思议的"],["sew","缝制"],
+    ["pilot","飞行员"],["label","标签"],["blend","混合"],["pitch","球场"],["tame","驯服的"],["pray","祈求"],
+    ["claim","要求"],["digest","消化"],["loan","贷款"],["slender","纤细的"],["grave","坟墓"],["grand","宏伟的"],
+    ["chief","主要的"],["former","以前的"],["latter","后者的"],["shift","移动"],["ceremony","典礼"],["patch","补丁"],
+    ["steer","驾驶"],["damp","潮湿的"],["creep","爬行"],["scratch","搔"],["seal","密封"],["rent","租用"],
+    ["stir","搅拌"],["blank","空白的"],["whisper","私语"],["spill","（使）溢出"],["float","浮动"],["plunge","暴跌"],
+    ["glimpse","瞥见"],["pack","将……打包"],["court","法庭"],["pierce","刺穿"],["thorough","彻底的"],["trial","审讯"],
+    ["trail","痕迹"],["recognize","识别出"],["recognition","认出"],["loyal","忠诚的"],["loyalty","忠诚"],["dizzy","头晕目眩的"],
+    ["crash","碰撞"],["sincere","真诚的"],["sincerely","真诚地"],["famine","饥荒"],["choke","窒息"],["mineral","矿物"],
+    ["favor","帮助"],["echo","回声"],["stretch","伸展"],["glance","一瞥"],["grant","授予"],["pattern","模式"],
+    ["poem","诗"],["poetry","诗集"],["poet","诗人"],["nuisance","讨厌的人或行为"],["fancy","幻想"],["layout","布局"],
+    ["debt","债务"],["shiver","颤抖"],["brief","简短的"],["entry","入口处"],["organ","器官"],["organic","有机的"],
+    ["board","木板"],["switch","开关"],["formula","公式"],["world-wide","遍及全世界的"],["queue","队列"],["neglect","忽略"],
+    ["string","线"],["fuel","燃料"],["steel","钢铁"],["melt","使融化"],["cope","应付"],["keen","热衷的"],
+    ["tidy","整洁的"],["balance","平衡"],["utter","完全的"],["vast","巨大的"],["era","时代"],["scatter","撒播"],
+    ["tense","紧张的"],["tension","紧张"],["intense","强烈的"],["intensive","加强的"],["craft","工艺"],["spur","刺激"],
+    ["swear","发誓"],["dash","猛冲"],["harsh","严厉的"],["hollow","空的"],["raw","生的"],["strategy","战略"],
+    ["coarse","粗的"],["deficit","赤字"],["soak","浸泡"],["dump","垃圾场"],["facilitate","促进"],["flesh","肉"],
+    ["bound","可能会…的"],["elite","社会精英"],["elect","选举"],["welfare","福利"],["sorrow","悲伤"],["sorrowful","悲伤的"],
+    ["drag","拖"],["faculty","天赋"],["nevertheless","然而"],["split","分裂"],["cultivate","耕种"],["foster","促进"],
+    ["hazard","危险"],["hazardous","危险的"],["severe","严重的"],["trap","陷阱"],["agriculture","农业"],["sway","摇动"],
+    ["device","装置"],["ripe","熟的"],["wander","徘徊"],["cast","投"],["diagnose","诊断"],["diagnosis","诊断"],
+    ["compose","组成"],["composition","构成"],["component","成分"],["compound","复合物"],["impose","把…强加于"],["expose","使暴露"],
+    ["exposure","面临"],["dispose","布置"],["luxury","奢侈"],["luxurious","奢侈的"],["notion","观念"],["discipline","纪律"],
+    ["filter","过滤"],["blast","爆炸"],["postpone","延迟"],["delay","延迟"],["guarantee","保证"],["launch","发射"],
+    ["identical","相同的"],["transfer","转移"],["transmit","传输"],["transit","运输"],["transition","过渡"],["transaction","交易"],
+    ["transparent","透明的"],["clarify","使清楚"],["classify","分类"],["identify","确认"],["modify","被修饰"],["specify","具体说明"],
+    ["verify","核实"],["crucial","关键性的"],["cruise","巡游"],["currency","货币"],["curriculum","课程"],["amateur","业余爱好者"],
+    ["technique","技巧"],["accurate","精确的"],["overcome","战胜"],["overlook","忽视"],["incentive","动机"],["liable","有责任的"],
+    ["considerable","相当大（或多）的"],["applicable","适当的"],["application","应用"],["available","可获得的"],["remarkable","卓越的"],["remark","评论"],
+    ["invaluable","非常宝贵的"],["inevitable","不可避免的"],["indispensable","不可缺少的"],["virtually","实质上"],["emerge","浮现"],["emergence","出现"],
+    ["emergency","紧急情况"],["emit","发出"],["emission","发射"],["eliminate","排除"],["effective","有效的"],["efficient","有效率的"],
+    ["evaporate","失踪"],["erect","建立"],["evolve","发展"],["evolution","演变"],["ratio","比"],["manner","方式"],
+    ["manipulate","操作"],["illustrate","阐明"],["comprehend","理解"],["comprehension","理解"],["comprehensive","广泛的"],["urban","都市的"],
+    ["rural","乡下的"],["awkward","尴尬的"],["commerce","商业"],["commercial","商业的"],["merchant","商人"],["origin","起源"],
+    ["original","原来的"],["orient","确定方向"],["oriental","东方的"],["dominate","支配"],["dominant","占优势的"],["defect","瑕疵"],
+    ["deficient","不足的"],["sufficient","足够的"],["possess","拥有"],["possession","拥有"],["settle","解决"],["reside","居住在"],
+    ["residence","住处"],["resident","居民"],["assess","评定"],["constant","不断的"],["consistent","一致的"],["violent","暴力的"],
+    ["urgent","急迫的"],["innocent","无辜的"],["ingredient","组成部分"],["reluctant","不情愿的"],["relevant","相关的"],["territory","领土"],
+    ["rotate","旋转"],["automatic","自动的"],["automate","自动化"],["betray","出卖"],["motivate","使有动机"],["motivation","动机"],
+    ["merit","优势"],["remote","遥远的"],["accustom","使习惯"],["variable","变量"],["addition","增加"],["additional","额外的"],
+    ["maintain","维持"],["retain","保持"],["attain","达到"],["contain","包含"],["entertain","热情款待"],["sustain","维持（生命、生存）"],
+    ["obtain","获得"],["continent","大陆"],["allege","断言"],["alleged","声称的"],["gradual","逐渐的"],["manual","手工的"],
+    ["enhance","提高"],["bacteria","的复数）细菌"],["virus","病毒"],["trigger","扳机"],["negotiate","谈判"],["ban","禁止"],
+    ["cater","提供饮食及服务"],["clash","冲突"],["curb","抑制"],["therapy","治疗"],["tough","坚强的"],["tackle","处理"],
+    ["element","元素"],["mend","修理"],["coincidence","巧合"],["trace","痕迹"],["issue","争论的问题"],["swallow","燕子"],
+    ["leap","跳"],["hatred","仇恨"],["evil","坏的"],["undermine","逐渐削弱"],["highlight","强调"],["feedback","反馈"],
+    ["framework","框架"],["fulfill","履行"],["headline","标题"],["farewell","告别"],["headquarters","司令部"],["copyright","版权"],
+    ["counterpart","职位（或作用）相当的人"],["harness","利用"],["tragedy","悲剧"],["wreck","失事"],["equip","装备"],["draft","草稿"],
+    ["masterpiece","杰作"],["haste","急速"],["mercy","仁慈"],["mercifully","（不幸中）幸运地"],["item","条款"],["straightforward","简单的"],
+    ["guideline","指导方针"],["boast","夸耀"],["strike","撞击"],["strive","努力"],["crude","天然的"],["rouse","激起"],
+    ["chill","（使）变冷"],["rear","后部"],["worship","礼拜"],["horizon","地平线"],["horizontal","水平的"],["twist","扭曲"],
+    ["sting","刺"],["fade","（使）褪色"],["rival","对手"],["fierce","凶猛的"],["grasp","抓紧"],["dull","呆滞的"],
+    ["swell","肿胀"],["weave","编织"],["mature","成熟的"],["fatigue","疲劳"],["bold","大胆的"],["slide","滑动"],
+    ["render","提供"],["earnest","认真的"],["ease","容易"],["scheme","计划"],["somehow","由于某种原因"],["breed","品种"],
+    ["banknote","钞票"],["thrive","兴旺"],["vain","徒劳的"],["well-off","富裕的"],["spoil","破坏"],["idle","空闲的"],
+    ["realm","领域"],["clue","线索"],["stuff","东西"],["swing","摇摆"],["crack","裂缝"],["virtue","美德"],
+    ["gap","缺口"],["brilliant","明亮的"],["gross","总的"],["crush","压碎"],["forthcoming","即将发生的"],["triumph","胜利"],
+    ["old-fashioned","陈旧的"],["durable","耐用的"],["regret","后悔"],["blind","盲的"],["relation","关系"],["burst","（使）爆裂"],
+    ["scream","尖叫"],["bright","明亮的"],["rough","粗糙的"],["drought","干旱"],["secretary","秘书"],["edge","边缘"],
+    ["bench","长凳"],["wine","酒"],["basin","盆"],["wheel","轮"],["wound","（身体或心灵上的）伤"],["valley","流域"],
+    ["sink","（使）下沉"],["area","区域"],["type","类型"],["soil","土壤"],["south","南方"],["southwest","西南方"],
+    ["southern","南的"],["southeast","东南"],["prisoner","囚犯"],["wedding","婚礼"],["tip","尖端"],["ordinary","平常的"],
+    ["coal","煤"],["period","阶段"],["wheat","小麦"],["century","世纪"],["dawn","黎明"],["republic","共和国"],
+    ["bias","偏见"],["dove","鸽子"],["gas","煤气"],["dust","灰尘"],["block","大块"],["crop","庄稼"],
+    ["downstairs","在楼下"],["ahead","在前"],["devil","魔鬼"],["gossip","流言蜚语"],["forest","森林"],["among","在……中间"],
+    ["fork","餐叉"],["cave","山洞"],["chimney","烟囱"],["north","北"],["northern","北方的"],["northwest","西北"],
+    ["northeast","东北"],["honest","诚实的"],["equipment","装备"],["scold","训斥"],["geography","地理"],["further","更远地"],
+    ["remove","以移开"],["mouse","老鼠"],["pale","苍白的"],["native","本地的"],["cage","笼"],["peasant","农民"],
+    ["theory","理论"],["medal","奖章"],["tin","锡"],["shore","岸"],["anyhow","尽管如此"],["anyone","任何人"],
+    ["anybody","任何人"],["anything","任何事物"],["anyway","无论如何"],["anywhere","无论何处"],["strength","力量"],["wise","明智的"],
+    ["peer","同龄人"],["enemy","敌人"],["below","在……下面"],["collar","衣领"],["political","政治的"],["cow","母牛"],
+    ["gather","聚集"],["quarrel","争吵"],["cheque","支票"],["goose","鹅"],["ham","火腿"],["natural","自然界的"],
+    ["pan","平底锅"],["scent","香味"],["noble","贵族的"],["ought","应当"],["sheet","被单"],["neat","整洁的"],
+    ["pure","纯粹的"],["melon","瓜"],["heaven","天堂"],["tailor","裁缝"],["silver","银"],["tobacco","烟草"],
+    ["spirit","精神"],["indeed","真正地"],["shrink","（使）缩小"],["land","陆地"],["willing","乐意的"],["steel","钢铁"],
+    ["pile","堆"],["thick","厚的"],["mode","方式"],["pork","猪肉"],["cruel","残忍的"],["root","根"],
+    ["escape","逃跑"],["fare","车费"],["forge","伪造"],["cheese","乳酪"],["percent","百分之……"],["cotton","棉"],
+    ["depth","深"],["fault","缺点"],["pity","同情"],["communism","共产主义"],["communist","共产主义者"],["advance","前进"],
+    ["mad","疯的"],["freeze","（使）冻结"],["brush","刷子"],["fridge","电冰箱"],["quarter","四分之一"],["fellow","男人"],
+    ["exhibition","展览"],["headache","头痛"],["row","排"],["scarce","缺乏的"],["harvest","收获"],["greeting","问候"],
+    ["greet","问候"],["labour","劳动"],["mirror","镜子"],["modern","现代的"],["nut","坚果"],["elegant","优雅的"],
+    ["square","平方"],["operate","操作"],["machine","机器"],["shallow","浅的"],["twin","双胞胎中一人"],["ladder","梯子"],
+    ["whereas","然而"],["international","国际的"],["penny","（英）便士"],["scene","情景"],["increase","增加"],["hole","洞"],
+    ["garage","车库"],["fond","喜爱的"],["destroy","破坏"],["energy","活力"],["bother","麻烦"],["above","在……上面"],
+    ["honour","荣幸"],["seek","寻找"],["medical","医学的"],["wipe","擦"],["midday","中午"],["roof","屋顶"],
+    ["quantity","数量"],["exist","存在"],["generation","一代"],["refer","谈及"],["dialogue","对话"],["cream","奶油"],
+    ["bone","骨"],["deed","行为"],["bury","埋葬"],["cent","分"],["coast","海岸"],["inch","英寸"],
+    ["envelope","信封"],["handkerchief","手帕"],["regular","定期的"],["model","模型"],["pleasure","愉快"],["pot","锅"],
+    ["length","长"],["plain","清楚的"],["nail","指甲"],["sweater","毛线衣"],["patent","专利权"],["treasure","珠宝"],
+    ["shade","阴凉处"],["tale","故事"],["branch","树枝"],["bush","灌木"],["laboratory","实验室"],["shelf","架子"],
+    ["internet","因特网"],["within","在…之内"],["temper","脾气"],["soldier","军人"],["prison","监狱"],["medicine","药"],
+    ["sort","种类"],["throughout","贯穿"],["sweep","扫"],["seize","抓住"],["otherwise","否则"],["pleasant","令人愉快的"],
+    ["needle","针"],["proper","正确的"],["mouth","嘴"],["sail","帆"],["hatch","孵出"],["flow","流动"],
+    ["peach","桃子"],["fist","拳头"],["lip","嘴唇"],["seed","种子"],["particular","特殊的"],["mailbox","邮筒"],
+    ["code","密码"],["boil","（使）沸腾"],["district","区"],["cottage","村舍"],["hereby","特此"],["jail","监狱"],
+    ["sketch","画素描"],["thought","思想"],["stair","楼梯"],["iron","铁"],["tap","水龙头"],["upward","向上的"],
+    ["tight","紧的"],["surface","表面"],["physics","物理学"],["sight","视力"],["path","路"],["narrow","狭窄的"],
+    ["ceiling","天花板"],["accept","接受"],["diet","饮食"],["pledge","正式承诺"],["servant","仆人"],["metal","金属"],
+    ["phrase","短语"],["telegram","电报"],["steak","牛排"],["ski","滑雪"],["technical","技术的"],["puzzle","谜"],
+    ["spoon","匙"],["pearl","珍珠"],["upstairs","在楼上"],["thief","小偷"],["pipe","管子"],["broad","宽阔的"],
+    ["port","港"],["opposite","对面的"],["heat","热"],["pupil","学生"],["saw","锯"],["fair","适当的"],
+    ["click","点击"],["goat","山羊"],["dozen","十二个"],["castle","城堡"],["camp","营地"],["equal","相等的"],
+    ["cock","公鸡"],["blame","责怪"],["dial","拨（电话号码）"],["chaos","混乱"],["hack","砍"],["slave","奴隶"],
+    ["tongue","舌头"],["tire","（使）感到累"],["bitter","苦的"],["button","纽扣"],["hall","门厅"],["drown","溺死"],
+    ["cell","细胞"],["party","聚会"],["wage","工资"],["flight","航班"],["fence","栅栏"],["affair","事情"],
+    ["chalk","粉笔"],["bend","（使）倾斜"],["cough","咳嗽"],["chain","链"],["operation","操作"],["throw","投"],
+    ["slip","滑倒"],["disk","磁盘"],["league","同盟"],["corn","（英）谷物"],["fetch","拿来"],["haul","拖"],
+    ["situation","形势"],["Olympic","奥林匹克运动会的"],["poll","民意测验"],["haunt","出没"],["church","教堂"],["dare","敢"],
+    ["broadcast","广播"],["solid","固体的"],["altogether","全部地"],["bite","咬"],["obey","服从"],["plough","犁"],
+    ["edit","编辑"],["quality","质量"],["fever","发烧"],["presently","不久"],["plantation","种植园"],["attic","阁楼"],
+    ["bulletin","新闻简报"],["discrimination","歧视"],["marsh","沼泽"],["pine","松树"],["breadth","宽度"],["route","路线"],
+    ["marathon","马拉松赛跑"],["ash","灰"],["brandy","白兰地（酒）"],["lid","盖子"],["brag","吹噓"],["column","柱"],
+    ["boom","繁荣"],["rumour","谣言"],["tube","管"],["colony","殖民地"],["blur","（使）模糊不清"],["physicist","物理学家"],
+    ["arrow","箭"],["terror","恐怖"],["approval","赞成"],["portable","轻便的"],["trunk","树干"],["ancestor","祖宗"],
+    ["horizontal","水平的"],["thunder","雷（声）"],["imperial","帝国的"],["jewel","宝石"],["insect","昆虫"],["knit","编织"],
+    ["incidence","发生率"],["Christ","基督"],["Christian","基督教徒"],["infant","婴儿"],["troublesome","令人烦恼的"],["indication","迹象"],
+    ["pillar","柱子"],["industrialize","（使）工业化"],["indirect","间接的"],["gang","帮"],["thumb","拇指"],["decoration","装饰"],
+    ["fuss","大惊小怪"],["deck","甲板"],["portrait","肖像"],["funeral","葬礼"],["theoretical","理论（上）的"],["customs","海关"],
+    ["operational","操作上的"],["operator","操作人员"],["frost","霜"],["database","资料库"],["rope","粗绳"],["trim","整齐的"],
+    ["freight","货运"],["crown","王冠"],["ministry","（政府的）部"],["clay","粘土"],["fortunately","幸运地"],["thrust","插"],
+    ["claw","爪"],["flock","群"],["basically","基本上"],["merchant","商人"],["banquet","宴会"],["classification","分类"],
+    ["zone","地区"],["explosive","易爆炸的"],["beard","胡须"],["pad","垫"],["experimental","实验性的"],["belly","腹部"],
+    ["trifle","琐事"],["mainland","大陆"],["aside","在旁边"],["marshal","元帅"],["chop","砍"],["revolutionary","革命的"],
+    ["exceedingly","非常"],["Bible","基督教的《圣经》"],["naturally","自然地"],["loyalty","忠诚"],["altitude","海拔"],["emperor","皇帝"],
+    ["mystery","神秘（性）"],["ridiculous","荒谬的"],["lord","贵族"],["alley","小街"],["parcel","包裹"],["philosopher","哲学家"],
+    ["elbow","肘"],["psychological","心理的"],["psychology","心理学"],["mushroom","蘑菇"],["loop","圈"],["alert","警惕的"],
+    ["yawn","打哈欠"],["dusk","傍晚"],["muscle","肌肉"],["lobby","大厅"],["drawer","抽屉"],["multiple","多个的"],
+    ["treaty","条约"],["liquor","烈酒"],["quotation","报价"],["donkey","驴"],["mop","拖把"],["likewise","同样地"],
+    ["dirt","尘士"],["resume","重新开始"],["lick","舔"],["noticeable","显而易见的"],["dialect","方言"],["restless","坐立不安的"],
+    ["leisure","空闲"],["normally","通常地"],["wrist","手腕"],["costly","昂贵的"],["religious","宗教的"],["lease","租约"],
+    ["nonsense","胡说"],["cop","警察"],["lane","（乡间）小路"],["nightmare","噩梦"],["commander","司令官"],["proportional","成比例的"],
+    ["landlord","地主"],["undergraduate","大学本科生"],["chew","咀嚼"],["visa","签证"],["parliament","议会"],["knot","绳结"],
+    ["underneath","在……下面"],["champagne","香槟酒"],["vitamin","维生素"],["hence","因此"],["upper","上面的"],["unconscious","不省人事的"],
+    ["alcohol","酒"],["bunch","串"],["wicked","邪恶的"],["hell","地狱"],["utmost","最大的"],["priest","牧师"],
+    ["bully","横行霸道者"],["worm","蠕虫"],["pea","豌豆"],["hardware","硬件"],["viewpoint","观点"],["bullet","枪弹"],
+    ["troop","一群士兵"],["platform","平台"],["hardship","艰难"],["mechanical","机械（驱动）的"],["paste","酱"],["budget","预算"],
+    ["oval","卵形的"],["gulf","鸿沟"],["measurement","测量"],["buddy","朋友"],["outer","远离中心的"],["grin","咧着嘴笑"],
+    ["maximum","最大量（值）"],["bubble","泡"],["ounce","盎司"],["grief","悲伤"],["mat","小地毯"],["bang","巨响"],
+    ["organic","有机的"],["governor","主管"],["Marxist","马克思主义者"],["bandage","绷带"],["oral","口头的"],["goodness","天哪"],
+    ["trash","垃圾"],["baggage","行李"],["relativity","相对论"],["ghost","鬼"],["trademark","商标"],["badge","徽章"],
+    ["rat","老鼠"],["germ","细菌"],["toss","扔"],["auxiliary","辅助的"],["ridge","脊"],["railroad","铁路"],
+    ["generator","发电机"],["tunnel","隧道"],["torch","火炬"],["authentic","真正的"],["moreover","而且"],["rag","破布"],
+    ["forum","论坛"],["paw","爪"],["token","代币"],["attorney","律师"],["throat","咽喉"],["racial","种族的"],
+    ["oven","烤箱"],["microphone","话筒"],["microscope","显微镜"],["microwave","微波炉"],
+  ];
+
+  var STORE_KEY = 'wordcard.state.v1';
+  var $ = function (id) { return document.getElementById(id); };
+
+  var el = {
+    dayLabel: $('dayLabel'),
+    countLabel: $('countLabel'),
+    fill: $('progressFill'),
+    stage: $('stage'),
+    cardView: $('cardView'),
+    doneView: $('doneView'),
+    word: $('wordEl'),
+    meaning: $('meaningEl'),
+    nextBtn: $('nextBtn'),
+    bottomBar: $('bottomBar'),
+    reviewBtn: $('reviewBtn'),
+    doneTitle: $('doneTitle'),
+    doneSub: $('doneSub'),
+    doneActions: $('doneActions'),
+    scrim: $('scrim'),
+    daySheet: $('daySheet'),
+    dayList: $('dayList'),
+    closeSheet: $('closeSheet'),
+    openSettings: $('openSettings'),
+    settingsSheet: $('settingsSheet'),
+    closeSettings: $('closeSettings'),
+    batchChips: $('batchChips'),
+    resetBtn: $('resetBtn')
+  };
+
+  var state = load();
+  var mode = 'learn';       /* learn | review | done | reviewDone | allDone */
+  var revealed = false;
+  var review = null;        /* {dayIdx, queue:[index], pos} */
+
+  function load() {
+    var fallback = { cursor: 0, batch: 50, pendingDone: null };
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return fallback;
+      var s = JSON.parse(raw);
+      if (!s || typeof s.cursor !== 'number') return fallback;
+      if ([20, 50, 100].indexOf(s.batch) === -1) s.batch = 50;
+      if (typeof s.pendingDone !== 'number') s.pendingDone = null;
+      if (s.cursor < 0 || s.cursor > WORDS.length) s.cursor = 0;
+      return s;
+    } catch (e) { return fallback; }
+  }
+
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  function setHeader(label, count, pct) {
+    el.dayLabel.textContent = label;
+    el.countLabel.textContent = count;
+    el.fill.style.width = Math.max(0, Math.min(1, pct)) * 100 + '%';
+  }
+
+  function showCard(w, m) {
+    el.word.textContent = w;
+    el.meaning.textContent = m;
+    el.cardView.classList.remove('revealed');
+    el.cardView.hidden = false;
+    el.doneView.hidden = true;
+    el.bottomBar.hidden = false;
+    el.nextBtn.disabled = true;
+    revealed = false;
+  }
+
+  function reveal() {
+    if (revealed) return;
+    revealed = true;
+    el.cardView.classList.add('revealed');
+    el.nextBtn.disabled = false;
+  }
+
+  /* ---------- 学习 ---------- */
+  function learnCard() {
+    mode = 'learn';
+    review = null;
+    var B = state.batch;
+    var i = state.cursor;
+    var dayNo = Math.floor(i / B) + 1;
+    var pos = i % B;
+    setHeader('第 ' + dayNo + ' 天', pos + ' / ' + B, pos / B);
+    showCard(WORDS[i][0], WORDS[i][1]);
+    el.nextBtn.textContent = '下一个';
+  }
+
+  function render() {
+    if (state.pendingDone !== null) {
+      showDayDone(state.pendingDone);
+      return;
+    }
+    if (state.cursor >= WORDS.length) {
+      showAllDone();
+      return;
+    }
+    learnCard();
+  }
+
+  function next() {
+    if (!revealed) return;
+
+    if (mode === 'review') {
+      review.pos++;
+      if (review.pos >= review.queue.length) {
+        showReviewDone();
+      } else {
+        renderReview();
+      }
+      return;
+    }
+
+    if (mode !== 'learn') return;
+
+    state.cursor++;
+    if (state.cursor >= WORDS.length) {
+      save();
+      showAllDone();
+      return;
+    }
+    if (state.cursor % state.batch === 0) {
+      state.pendingDone = state.cursor / state.batch;
+      save();
+      showDayDone(state.pendingDone);
+      return;
+    }
+    save();
+    learnCard();
+  }
+
+  function showDayDone(dayNo) {
+    mode = 'done';
+    var B = state.batch;
+    var start = (dayNo - 1) * B;
+    var end = Math.min(dayNo * B, WORDS.length);
+    var total = end - start;
+
+    el.cardView.hidden = true;
+    el.bottomBar.hidden = true;
+    el.doneView.hidden = false;
+
+    setHeader('第 ' + dayNo + ' 天', total + ' / ' + total, 1);
+    el.doneTitle.textContent = '第 ' + dayNo + ' 天完成';
+    el.doneSub.textContent = total + ' 个词 · 明天继续';
+
+    el.doneActions.innerHTML = '';
+    el.doneActions.appendChild(makeBtn('复习这一天', 'primary', function () {
+      startReview(dayNo - 1);
+    }));
+
+    if (state.cursor < WORDS.length) {
+      el.doneActions.appendChild(makeBtn('开始第 ' + (dayNo + 1) + ' 天', 'secondary', function () {
+        state.pendingDone = null;
+        save();
+        render();
+      }));
+    }
+  }
+
+  function showAllDone() {
+    mode = 'allDone';
+    var total = WORDS.length;
+    var days = Math.ceil(total / state.batch);
+
+    el.cardView.hidden = true;
+    el.bottomBar.hidden = true;
+    el.doneView.hidden = false;
+
+    setHeader('全部完成', total + ' / ' + total, 1);
+    el.doneTitle.textContent = '全部背完';
+    el.doneSub.textContent = '共 ' + days + ' 天 · ' + total + ' 个词';
+
+    el.doneActions.innerHTML = '';
+    el.doneActions.appendChild(makeBtn('复习任意一天', 'primary', function () {
+      openDaySheet();
+    }));
+  }
+
+  /* ---------- 复习 ---------- */
+  function startReview(dayIdx) {
+    var B = state.batch;
+    var start = dayIdx * B;
+    var end = Math.min((dayIdx + 1) * B, WORDS.length);
+    var covered = Math.min(state.cursor, end);
+    if (covered <= start) return;
+
+    var idx = [];
+    for (var i = start; i < covered; i++) idx.push(i);
+
+    review = { dayIdx: dayIdx, queue: shuffle(idx), pos: 0 };
+    mode = 'review';
+    closeSheets();
+    renderReview();
+  }
+
+  function renderReview() {
+    if (review.pos >= review.queue.length) {
+      showReviewDone();
+      return;
+    }
+    var total = review.queue.length;
+    var pos = review.pos;
+
+    setHeader('复习 · 第 ' + (review.dayIdx + 1) + ' 天', pos + ' / ' + total, pos / total);
+    var w = WORDS[review.queue[pos]];
+    showCard(w[0], w[1]);
+    el.nextBtn.textContent = (pos === total - 1) ? '完成复习' : '下一个';
+  }
+
+  function showReviewDone() {
+    mode = 'reviewDone';
+    var total = review.queue.length;
+    var dayNo = review.dayIdx + 1;
+
+    el.cardView.hidden = true;
+    el.bottomBar.hidden = true;
+    el.doneView.hidden = false;
+
+    setHeader('复习 · 第 ' + dayNo + ' 天', total + ' / ' + total, 1);
+    el.doneTitle.textContent = '第 ' + dayNo + ' 天复习完成';
+    el.doneSub.textContent = total + ' 个词 · 随机顺序';
+
+    el.doneActions.innerHTML = '';
+    el.doneActions.appendChild(makeBtn('再复习一遍', 'primary', function () {
+      startReview(dayNo - 1);
+    }));
+    el.doneActions.appendChild(makeBtn('返回今日学习', 'secondary', function () {
+      render();
+    }));
+  }
+
+  function makeBtn(label, kind, onClick) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'act-btn ' + kind;
+    b.textContent = label;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  /* ---------- 抽屉 ---------- */
+  function closeSheets() {
+    [el.daySheet, el.settingsSheet].forEach(function (s) {
+      s.classList.remove('open');
+      s.setAttribute('aria-hidden', 'true');
+    });
+    el.scrim.classList.remove('show');
+  }
+
+  function openSheet(sheet) {
+    closeSheets();
+    el.scrim.classList.add('show');
+    sheet.classList.add('open');
+    sheet.setAttribute('aria-hidden', 'false');
+  }
+
+  function openDaySheet() {
+    renderDayList();
+    openSheet(el.daySheet);
+  }
+
+  function renderDayList() {
+    var B = state.batch;
+    var total = WORDS.length;
+    var days = Math.ceil(total / B);
+
+    el.dayList.innerHTML = '';
+
+    for (var d = 0; d < days; d++) {
+      var start = d * B;
+      var end = Math.min(start + B, total);
+      var n = end - start;
+      var learned = Math.max(0, Math.min(state.cursor - start, n));
+
+      var row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'day-row' + (learned > 0 ? '' : ' is-locked');
+
+      var no = document.createElement('span');
+      no.className = 'd-no';
+      no.textContent = '第 ' + (d + 1) + ' 天';
+
+      var meta = document.createElement('span');
+      meta.className = 'd-meta';
+      if (learned >= n) meta.textContent = n + ' 词 · 已完成';
+      else if (learned > 0) meta.textContent = n + ' 词 · 进行中 ' + learned + '/' + n;
+      else meta.textContent = n + ' 词 · 未开始';
+
+      var arrow = document.createElement('span');
+      arrow.className = 'd-arrow';
+      arrow.textContent = '›';
+
+      row.appendChild(no);
+      row.appendChild(meta);
+      row.appendChild(arrow);
+
+      if (learned > 0) {
+        (function (dayIdx) {
+          row.addEventListener('click', function () { startReview(dayIdx); });
+        })(d);
+      }
+      el.dayList.appendChild(row);
+    }
+  }
+
+  /* ---------- 设置 ---------- */
+  function renderChips() {
+    var chips = el.batchChips.querySelectorAll('.chip');
+    for (var i = 0; i < chips.length; i++) {
+      var b = parseInt(chips[i].getAttribute('data-batch'), 10);
+      chips[i].classList.toggle('active', b === state.batch);
+    }
+  }
+
+  function setBatch(b) {
+    if ([20, 50, 100].indexOf(b) === -1) return;
+    state.batch = b;
+    state.pendingDone = null;
+    save();
+    renderChips();
+    closeSheets();
+    render();
+  }
+
+  /* ---------- 事件 ---------- */
+  el.stage.addEventListener('click', function () {
+    if ((mode === 'learn' || mode === 'review') && !revealed) reveal();
+  });
+
+  el.nextBtn.addEventListener('click', next);
+  el.reviewBtn.addEventListener('click', openDaySheet);
+  el.closeSheet.addEventListener('click', closeSheets);
+  el.scrim.addEventListener('click', closeSheets);
+
+  el.openSettings.addEventListener('click', function () {
+    renderChips();
+    openSheet(el.settingsSheet);
+  });
+  el.closeSettings.addEventListener('click', closeSheets);
+
+  el.batchChips.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.getAttribute) return;
+    var v = t.getAttribute('data-batch');
+    if (!v) return;
+    setBatch(parseInt(v, 10));
+  });
+
+  el.resetBtn.addEventListener('click', function () {
+    if (!window.confirm('清空学习进度，从第 1 天重新开始？')) return;
+    state.cursor = 0;
+    state.pendingDone = null;
+    save();
+    closeSheets();
+    render();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === ' ' || e.code === 'Space') {
+      e.preventDefault();
+      if (mode === 'learn' || mode === 'review') reveal();
+    } else if (e.key === 'Enter' || e.key === 'ArrowRight') {
+      if (!el.nextBtn.disabled && !el.bottomBar.hidden) next();
+    }
+  });
+
+  /* ---------- 启动 ---------- */
+  render();
+})();
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+</script>
+</body>
+</html>
