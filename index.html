@@ -9,7 +9,7 @@
   :root{
     --bg:#FBFAF6;
     --ink:#16150F;
-    --ink2:#4A4841;
+    --ink2:#5E5B52;
     --muted:#9C9A92;
     --line:#ECEAE3;
     --track:#EEECE5;
@@ -75,59 +75,53 @@
     transition:width .3s ease;
   }
 
-  /* ---------- 卡片区 ---------- */
+  /* ---------- 单词组 ---------- */
   .stage{position:relative;flex:1 1 auto;min-height:0}
 
-  .card-view{
+  .group-view{
     position:absolute;inset:0;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    padding:16px 26px 96px;
-    text-align:center;
-    cursor:pointer;
-    user-select:none;
-    -webkit-user-select:none;
-    touch-action:manipulation;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    padding:10px 22px 28px;
+    scrollbar-width:none;
   }
-  .word{
-    font-size:clamp(42px,12vw,56px);
+  .group-view::-webkit-scrollbar{display:none}
+
+  .group-meta{
+    font-size:12px;
+    letter-spacing:.02em;
+    color:var(--muted);
+    margin:2px 0 8px;
+  }
+
+  .word-list{list-style:none;margin:0;padding:0}
+  .word-row{
+    padding:12px 2px;
+    border-bottom:1px solid var(--line);
+  }
+  .word-row:first-child{border-top:1px solid var(--line)}
+  .word-row .w{
+    font-size:26px;
     font-weight:600;
-    letter-spacing:-.02em;
-    line-height:1.08;
+    letter-spacing:-.01em;
+    line-height:1.25;
     color:var(--ink);
     word-break:break-word;
-    max-width:100%;
   }
-  .meaning-wrap{
-    width:100%;
-    max-width:340px;
-    margin-top:26px;
-    opacity:0;
-    transform:translateY(10px);
-    transition:opacity .22s ease,transform .22s ease;
-    pointer-events:none;
-  }
-  .card-view.revealed .meaning-wrap{opacity:1;transform:none}
-  .rule{width:26px;height:1.5px;background:#DCD8CC;margin:0 auto 18px;border-radius:2px}
-  .meaning{
-    font-size:21px;
-    line-height:1.6;
-    letter-spacing:.01em;
+  .word-row .m{
+    display:none;
+    font-size:17px;
+    line-height:1.5;
     color:var(--ink2);
+    margin-top:7px;
+    padding-bottom:2px;
   }
-  .hint{
-    position:absolute;
-    left:0;right:0;bottom:26px;
-    text-align:center;
-    font-size:13px;
-    letter-spacing:.02em;
-    color:#ABA89E;
-    transition:opacity .2s ease;
-    pointer-events:none;
+  .word-row.open .m{display:block;animation:fadeUp .2s ease both}
+  @keyframes fadeUp{
+    from{opacity:0;transform:translateY(4px)}
+    to{opacity:1;transform:none}
   }
-  .card-view.revealed .hint{opacity:0}
 
   /* ---------- 完成页 ---------- */
   .done-view{
@@ -178,12 +172,7 @@
     cursor:pointer;
     transition:transform .1s ease,background .2s ease,color .2s ease;
   }
-  .primary:active:not(:disabled){transform:scale(.985)}
-  .primary:disabled{
-    background:#EBE9E2;
-    color:#B7B4AA;
-    cursor:default;
-  }
+  .primary:active{transform:scale(.985)}
 
   /* ---------- 遮罩 & 抽屉 ---------- */
   .scrim{
@@ -255,7 +244,7 @@
   .chips{display:flex;gap:8px}
   .chip{
     appearance:none;
-    padding:10px 20px;
+    padding:10px 18px;
     border-radius:999px;
     border:1px solid #E4E1D8;
     background:#fff;
@@ -313,13 +302,9 @@
   <div class="track"><div class="fill" id="progressFill"></div></div>
 
   <main class="stage" id="stage">
-    <section class="card-view" id="cardView">
-      <div class="word" id="wordEl"></div>
-      <div class="meaning-wrap">
-        <div class="rule"></div>
-        <div class="meaning" id="meaningEl"></div>
-      </div>
-      <div class="hint" id="hintEl">轻点卡片，看释义</div>
+    <section class="group-view" id="groupView">
+      <div class="group-meta" id="groupMeta">第 1 / 5 组 · 已显示 0 / 10</div>
+      <ol class="word-list" id="wordList"></ol>
     </section>
 
     <section class="done-view" id="doneView" hidden>
@@ -331,7 +316,7 @@
   </main>
 
   <footer class="bottom" id="bottomBar">
-    <button class="primary" id="nextBtn" type="button" disabled>下一个</button>
+    <button class="primary" id="actionBtn" type="button">显示下一个释义</button>
   </footer>
 
   <div class="scrim" id="scrim"></div>
@@ -360,13 +345,13 @@
     </div>
     <div class="sheet-body set-body">
       <div class="set-block">
-        <div class="set-label">每天新词数</div>
-        <div class="chips" id="batchChips">
-          <button class="chip" type="button" data-batch="20">20</button>
-          <button class="chip" type="button" data-batch="50">50</button>
-          <button class="chip" type="button" data-batch="100">100</button>
+        <div class="set-label">每天组数</div>
+        <div class="chips" id="groupChips">
+          <button class="chip" type="button" data-groups="3">3 组</button>
+          <button class="chip" type="button" data-groups="5">5 组</button>
+          <button class="chip" type="button" data-groups="10">10 组</button>
         </div>
-        <p class="set-note">改动后按新数量重新划天，已学进度保留。</p>
+        <p class="set-note">每组 10 个词。3 组 = 30 词，5 组 = 50 词，10 组 = 100 词。改动后按新组数重新划天，已学进度保留。</p>
       </div>
       <div class="set-block">
         <div class="set-label">安装到手机</div>
@@ -374,7 +359,7 @@
       </div>
       <div class="set-block">
         <div class="set-label">词表</div>
-        <p class="set-note">四级核心 1654 词：高频 990 · 基础 300 · 偶考 200 · 关联词 164，共 34 天。顺序为 高频 → 基础 → 偶考，释义取每条的第一个义项。</p>
+        <p class="set-note">四级核心 1654 词：高频 990 · 基础 300 · 偶考 200 · 关联词 164。默认每天 5 组（50 词），共 34 天；顺序为 高频 → 基础 → 偶考，释义取第一条。</p>
       </div>
       <div class="set-block">
         <button class="danger-btn" id="resetBtn" type="button">清空学习进度</button>
@@ -667,24 +652,26 @@
     ["oven","烤箱"],["microphone","话筒"],["microscope","显微镜"],["microwave","微波炉"],
   ];
 
+  var GROUP = 10;
   var STORE_KEY = 'wordcard.state.v1';
-  var $ = function (id) { return document.getElementById(id); };
+
+  function $(id) { return document.getElementById(id); }
 
   var el = {
     dayLabel: $('dayLabel'),
     countLabel: $('countLabel'),
     fill: $('progressFill'),
     stage: $('stage'),
-    cardView: $('cardView'),
+    groupView: $('groupView'),
+    groupMeta: $('groupMeta'),
+    wordList: $('wordList'),
     doneView: $('doneView'),
-    word: $('wordEl'),
-    meaning: $('meaningEl'),
-    nextBtn: $('nextBtn'),
-    bottomBar: $('bottomBar'),
-    reviewBtn: $('reviewBtn'),
     doneTitle: $('doneTitle'),
     doneSub: $('doneSub'),
     doneActions: $('doneActions'),
+    bottomBar: $('bottomBar'),
+    actionBtn: $('actionBtn'),
+    reviewBtn: $('reviewBtn'),
     scrim: $('scrim'),
     daySheet: $('daySheet'),
     dayList: $('dayList'),
@@ -692,25 +679,28 @@
     openSettings: $('openSettings'),
     settingsSheet: $('settingsSheet'),
     closeSettings: $('closeSettings'),
-    batchChips: $('batchChips'),
+    groupChips: $('groupChips'),
     resetBtn: $('resetBtn')
   };
 
   var state = load();
-  var mode = 'learn';       /* learn | review | done | reviewDone | allDone */
-  var revealed = false;
-  var review = null;        /* {dayIdx, queue:[index], pos} */
+  var mode = 'learn';      /* learn | review | done | reviewDone | allDone */
+  var view = null;         /* 当前分组上下文 */
+  var rows = [];           /* [{w,m}] 当前这一组 10 个词 */
+  var revealed = 0;        /* 已出释义个数 */
+  var review = null;       /* {dayIdx, order:[index]} */
 
   function load() {
-    var fallback = { cursor: 0, batch: 50, pendingDone: null };
+    var fallback = { cursor: 0, groupsPerDay: 5, pendingDone: null };
     try {
       var raw = localStorage.getItem(STORE_KEY);
       if (!raw) return fallback;
       var s = JSON.parse(raw);
       if (!s || typeof s.cursor !== 'number') return fallback;
-      if ([20, 50, 100].indexOf(s.batch) === -1) s.batch = 50;
+      if ([3, 5, 10].indexOf(s.groupsPerDay) === -1) s.groupsPerDay = 5;
       if (typeof s.pendingDone !== 'number') s.pendingDone = null;
       if (s.cursor < 0 || s.cursor > WORDS.length) s.cursor = 0;
+      delete s.batch;          /* 旧版本字段 */
       return s;
     } catch (e) { return fallback; }
   }
@@ -727,100 +717,250 @@
     return arr;
   }
 
+  function daySize() { return state.groupsPerDay * GROUP; }
+
   function setHeader(label, count, pct) {
     el.dayLabel.textContent = label;
     el.countLabel.textContent = count;
     el.fill.style.width = Math.max(0, Math.min(1, pct)) * 100 + '%';
   }
 
-  function showCard(w, m) {
-    el.word.textContent = w;
-    el.meaning.textContent = m;
-    el.cardView.classList.remove('revealed');
-    el.cardView.hidden = false;
-    el.doneView.hidden = true;
-    el.bottomBar.hidden = false;
-    el.nextBtn.disabled = true;
-    revealed = false;
+  function renderRows() {
+    el.wordList.innerHTML = '';
+    rows.forEach(function (item) {
+      var li = document.createElement('li');
+      li.className = 'word-row';
+
+      var w = document.createElement('div');
+      w.className = 'w';
+      w.textContent = item.w;
+
+      var m = document.createElement('div');
+      m.className = 'm';
+      m.textContent = item.m;
+
+      li.appendChild(w);
+      li.appendChild(m);
+      el.wordList.appendChild(li);
+    });
+    el.groupView.scrollTop = 0;
   }
 
-  function reveal() {
-    if (revealed) return;
-    revealed = true;
-    el.cardView.classList.add('revealed');
-    el.nextBtn.disabled = false;
-  }
-
-  /* ---------- 学习 ---------- */
-  function learnCard() {
-    mode = 'learn';
-    review = null;
-    var B = state.batch;
-    var i = state.cursor;
-    var dayNo = Math.floor(i / B) + 1;
-    var pos = i % B;
-    setHeader('第 ' + dayNo + ' 天', pos + ' / ' + B, pos / B);
-    showCard(WORDS[i][0], WORDS[i][1]);
-    el.nextBtn.textContent = '下一个';
-  }
-
-  function render() {
-    if (state.pendingDone !== null) {
-      showDayDone(state.pendingDone);
-      return;
+  function updateMeta() {
+    if (view.kind === 'review') {
+      el.groupMeta.textContent =
+        '第 ' + (view.chunk + 1) + ' / ' + view.chunks + ' 组 · 已显示 ' +
+        revealed + ' / ' + rows.length;
+    } else {
+      el.groupMeta.textContent =
+        '第 ' + view.groupNo + ' / ' + view.groupsInDay + ' 组 · 已显示 ' +
+        revealed + ' / ' + rows.length;
     }
-    if (state.cursor >= WORDS.length) {
-      showAllDone();
-      return;
-    }
-    learnCard();
   }
 
-  function next() {
-    if (!revealed) return;
-
-    if (mode === 'review') {
-      review.pos++;
-      if (review.pos >= review.queue.length) {
-        showReviewDone();
+  function updateAction() {
+    var b = el.actionBtn;
+    if (view.kind === 'review') {
+      if (revealed < rows.length) {
+        b.textContent = '显示下一个释义';
+      } else if ((view.chunk + 1) * GROUP >= view.total) {
+        b.textContent = '完成复习';
       } else {
-        renderReview();
+        b.textContent = '下一组';
       }
       return;
     }
 
-    if (mode !== 'learn') return;
+    if (revealed < rows.length) {
+      b.textContent = '显示下一个释义';
+    } else if (state.cursor + rows.length >= WORDS.length) {
+      b.textContent = '全部背完';
+    } else if (state.cursor + rows.length >= view.dayEnd) {
+      b.textContent = '完成第 ' + view.dayNo + ' 天';
+    } else {
+      b.textContent = '下一组';
+    }
+  }
 
-    state.cursor++;
-    if (state.cursor >= WORDS.length) {
+  function revealNext() {
+    if (revealed >= rows.length) return;
+    var li = el.wordList.children[revealed];
+    if (!li) return;
+    li.classList.add('open');
+    revealed++;
+    updateMeta();
+    updateAction();
+    li.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  /* ---------- 学新词 ---------- */
+  function renderLearnGroup() {
+    mode = 'learn';
+    review = null;
+
+    var day = daySize();
+    var dayNo = Math.floor(state.cursor / day) + 1;
+    var dayStart = (dayNo - 1) * day;
+    var dayEnd = Math.min(dayStart + day, WORDS.length);
+    var groupEnd = Math.min(state.cursor + GROUP, dayEnd);
+    var groupNo = Math.floor((state.cursor - dayStart) / GROUP) + 1;
+    var groupsInDay = Math.ceil((dayEnd - dayStart) / GROUP);
+
+    rows = WORDS.slice(state.cursor, groupEnd).map(function (x) {
+      return { w: x[0], m: x[1] };
+    });
+    revealed = 0;
+
+    view = {
+      kind: 'learn',
+      dayNo: dayNo,
+      dayStart: dayStart,
+      dayEnd: dayEnd,
+      groupNo: groupNo,
+      groupsInDay: groupsInDay
+    };
+
+    var pos = state.cursor - dayStart;
+    setHeader('第 ' + dayNo + ' 天', pos + ' / ' + (dayEnd - dayStart), pos / (dayEnd - dayStart));
+
+    el.groupView.hidden = false;
+    el.doneView.hidden = true;
+    el.bottomBar.hidden = false;
+
+    renderRows();
+    updateMeta();
+    updateAction();
+  }
+
+  /* ---------- 复习 ---------- */
+  function startReview(dayIdx) {
+    var day = daySize();
+    var start = dayIdx * day;
+    var end = Math.min((dayIdx + 1) * day, WORDS.length);
+    var covered = Math.min(state.cursor, end);
+    if (covered <= start) return;
+
+    var order = [];
+    for (var i = start; i < covered; i++) order.push(i);
+
+    review = { dayIdx: dayIdx, order: shuffle(order) };
+    view = {
+      kind: 'review',
+      dayIdx: dayIdx,
+      total: review.order.length,
+      chunk: 0,
+      chunks: Math.ceil(review.order.length / GROUP)
+    };
+
+    mode = 'review';
+    closeSheets();
+    renderReviewChunk();
+  }
+
+  function renderReviewChunk() {
+    mode = 'review';
+
+    var from = view.chunk * GROUP;
+    var to = Math.min(from + GROUP, view.total);
+
+    rows = review.order.slice(from, to).map(function (i) {
+      return { w: WORDS[i][0], m: WORDS[i][1] };
+    });
+    revealed = 0;
+
+    setHeader(
+      '复习 · 第 ' + (review.dayIdx + 1) + ' 天',
+      from + ' / ' + view.total,
+      from / view.total
+    );
+
+    el.groupView.hidden = false;
+    el.doneView.hidden = true;
+    el.bottomBar.hidden = false;
+
+    renderRows();
+    updateMeta();
+    updateAction();
+  }
+
+  function showReviewDone() {
+    mode = 'reviewDone';
+
+    el.groupView.hidden = true;
+    el.bottomBar.hidden = true;
+    el.doneView.hidden = false;
+
+    setHeader(
+      '复习 · 第 ' + (review.dayIdx + 1) + ' 天',
+      view.total + ' / ' + view.total,
+      1
+    );
+    el.doneTitle.textContent = '第 ' + (review.dayIdx + 1) + ' 天复习完成';
+    el.doneSub.textContent = view.total + ' 个词 · 随机顺序';
+
+    el.doneActions.innerHTML = '';
+    el.doneActions.appendChild(makeBtn('再复习一遍', 'primary', function () {
+      startReview(review.dayIdx);
+    }));
+    el.doneActions.appendChild(makeBtn('返回今日学习', 'secondary', function () {
+      render();
+    }));
+  }
+
+  /* ---------- 动作按钮 ---------- */
+  function onAction() {
+    if (revealed < rows.length) {
+      revealNext();
+      return;
+    }
+
+    if (view.kind === 'review') {
+      if ((view.chunk + 1) * GROUP >= view.total) {
+        showReviewDone();
+      } else {
+        view.chunk++;
+        renderReviewChunk();
+      }
+      return;
+    }
+
+    var next = state.cursor + rows.length;
+
+    if (next >= WORDS.length) {
+      state.cursor = next;
       save();
       showAllDone();
       return;
     }
-    if (state.cursor % state.batch === 0) {
-      state.pendingDone = state.cursor / state.batch;
+
+    if (next >= view.dayEnd) {
+      state.cursor = next;
+      state.pendingDone = view.dayNo;
       save();
-      showDayDone(state.pendingDone);
+      showDayDone(view.dayNo);
       return;
     }
+
+    state.cursor = next;
     save();
-    learnCard();
+    renderLearnGroup();
   }
 
+  /* ---------- 完成页 ---------- */
   function showDayDone(dayNo) {
     mode = 'done';
-    var B = state.batch;
-    var start = (dayNo - 1) * B;
-    var end = Math.min(dayNo * B, WORDS.length);
-    var total = end - start;
+    var day = daySize();
+    var start = (dayNo - 1) * day;
+    var end = Math.min(dayNo * day, WORDS.length);
+    var n = end - start;
 
-    el.cardView.hidden = true;
+    el.groupView.hidden = true;
     el.bottomBar.hidden = true;
     el.doneView.hidden = false;
 
-    setHeader('第 ' + dayNo + ' 天', total + ' / ' + total, 1);
+    setHeader('第 ' + dayNo + ' 天', n + ' / ' + n, 1);
     el.doneTitle.textContent = '第 ' + dayNo + ' 天完成';
-    el.doneSub.textContent = total + ' 个词 · 明天继续';
+    el.doneSub.textContent = n + ' 个词 · 明天继续';
 
     el.doneActions.innerHTML = '';
     el.doneActions.appendChild(makeBtn('复习这一天', 'primary', function () {
@@ -839,9 +979,9 @@
   function showAllDone() {
     mode = 'allDone';
     var total = WORDS.length;
-    var days = Math.ceil(total / state.batch);
+    var days = Math.ceil(total / daySize());
 
-    el.cardView.hidden = true;
+    el.groupView.hidden = true;
     el.bottomBar.hidden = true;
     el.doneView.hidden = false;
 
@@ -855,59 +995,6 @@
     }));
   }
 
-  /* ---------- 复习 ---------- */
-  function startReview(dayIdx) {
-    var B = state.batch;
-    var start = dayIdx * B;
-    var end = Math.min((dayIdx + 1) * B, WORDS.length);
-    var covered = Math.min(state.cursor, end);
-    if (covered <= start) return;
-
-    var idx = [];
-    for (var i = start; i < covered; i++) idx.push(i);
-
-    review = { dayIdx: dayIdx, queue: shuffle(idx), pos: 0 };
-    mode = 'review';
-    closeSheets();
-    renderReview();
-  }
-
-  function renderReview() {
-    if (review.pos >= review.queue.length) {
-      showReviewDone();
-      return;
-    }
-    var total = review.queue.length;
-    var pos = review.pos;
-
-    setHeader('复习 · 第 ' + (review.dayIdx + 1) + ' 天', pos + ' / ' + total, pos / total);
-    var w = WORDS[review.queue[pos]];
-    showCard(w[0], w[1]);
-    el.nextBtn.textContent = (pos === total - 1) ? '完成复习' : '下一个';
-  }
-
-  function showReviewDone() {
-    mode = 'reviewDone';
-    var total = review.queue.length;
-    var dayNo = review.dayIdx + 1;
-
-    el.cardView.hidden = true;
-    el.bottomBar.hidden = true;
-    el.doneView.hidden = false;
-
-    setHeader('复习 · 第 ' + dayNo + ' 天', total + ' / ' + total, 1);
-    el.doneTitle.textContent = '第 ' + dayNo + ' 天复习完成';
-    el.doneSub.textContent = total + ' 个词 · 随机顺序';
-
-    el.doneActions.innerHTML = '';
-    el.doneActions.appendChild(makeBtn('再复习一遍', 'primary', function () {
-      startReview(dayNo - 1);
-    }));
-    el.doneActions.appendChild(makeBtn('返回今日学习', 'secondary', function () {
-      render();
-    }));
-  }
-
   function makeBtn(label, kind, onClick) {
     var b = document.createElement('button');
     b.type = 'button';
@@ -915,6 +1002,18 @@
     b.textContent = label;
     b.addEventListener('click', onClick);
     return b;
+  }
+
+  function render() {
+    if (state.pendingDone !== null) {
+      showDayDone(state.pendingDone);
+      return;
+    }
+    if (state.cursor >= WORDS.length) {
+      showAllDone();
+      return;
+    }
+    renderLearnGroup();
   }
 
   /* ---------- 抽屉 ---------- */
@@ -939,15 +1038,15 @@
   }
 
   function renderDayList() {
-    var B = state.batch;
+    var day = daySize();
     var total = WORDS.length;
-    var days = Math.ceil(total / B);
+    var days = Math.ceil(total / day);
 
     el.dayList.innerHTML = '';
 
     for (var d = 0; d < days; d++) {
-      var start = d * B;
-      var end = Math.min(start + B, total);
+      var start = d * day;
+      var end = Math.min(start + day, total);
       var n = end - start;
       var learned = Math.max(0, Math.min(state.cursor - start, n));
 
@@ -984,16 +1083,16 @@
 
   /* ---------- 设置 ---------- */
   function renderChips() {
-    var chips = el.batchChips.querySelectorAll('.chip');
+    var chips = el.groupChips.querySelectorAll('.chip');
     for (var i = 0; i < chips.length; i++) {
-      var b = parseInt(chips[i].getAttribute('data-batch'), 10);
-      chips[i].classList.toggle('active', b === state.batch);
+      var g = parseInt(chips[i].getAttribute('data-groups'), 10);
+      chips[i].classList.toggle('active', g === state.groupsPerDay);
     }
   }
 
-  function setBatch(b) {
-    if ([20, 50, 100].indexOf(b) === -1) return;
-    state.batch = b;
+  function setGroups(g) {
+    if ([3, 5, 10].indexOf(g) === -1) return;
+    state.groupsPerDay = g;
     state.pendingDone = null;
     save();
     renderChips();
@@ -1002,11 +1101,7 @@
   }
 
   /* ---------- 事件 ---------- */
-  el.stage.addEventListener('click', function () {
-    if ((mode === 'learn' || mode === 'review') && !revealed) reveal();
-  });
-
-  el.nextBtn.addEventListener('click', next);
+  el.actionBtn.addEventListener('click', onAction);
   el.reviewBtn.addEventListener('click', openDaySheet);
   el.closeSheet.addEventListener('click', closeSheets);
   el.scrim.addEventListener('click', closeSheets);
@@ -1017,12 +1112,12 @@
   });
   el.closeSettings.addEventListener('click', closeSheets);
 
-  el.batchChips.addEventListener('click', function (e) {
+  el.groupChips.addEventListener('click', function (e) {
     var t = e.target;
     if (!t || !t.getAttribute) return;
-    var v = t.getAttribute('data-batch');
+    var v = t.getAttribute('data-groups');
     if (!v) return;
-    setBatch(parseInt(v, 10));
+    setGroups(parseInt(v, 10));
   });
 
   el.resetBtn.addEventListener('click', function () {
@@ -1035,11 +1130,9 @@
   });
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === ' ' || e.code === 'Space') {
+    if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter' || e.key === 'ArrowRight') {
       e.preventDefault();
-      if (mode === 'learn' || mode === 'review') reveal();
-    } else if (e.key === 'Enter' || e.key === 'ArrowRight') {
-      if (!el.nextBtn.disabled && !el.bottomBar.hidden) next();
+      if (!el.bottomBar.hidden) onAction();
     }
   });
 
