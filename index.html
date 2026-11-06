@@ -80,44 +80,67 @@
 
   .group-view{
     position:absolute;inset:0;
-    overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
-    overscroll-behavior:contain;
-    padding:10px 22px 28px;
-    scrollbar-width:none;
+    display:flex;
+    flex-direction:column;
+    padding:8px 22px 12px;
+    overflow:hidden;
   }
-  .group-view::-webkit-scrollbar{display:none}
 
   .group-meta{
+    flex:0 0 auto;
     font-size:12px;
     letter-spacing:.02em;
     color:var(--muted);
-    margin:2px 0 8px;
+    margin:0 0 4px;
   }
 
-  .word-list{list-style:none;margin:0;padding:0}
+  .word-list{
+    flex:1 1 auto;
+    min-height:0;
+    list-style:none;
+    margin:0;padding:0;
+    display:flex;
+    flex-direction:column;
+    overflow-y:auto;
+    scrollbar-width:none;
+  }
+  .word-list::-webkit-scrollbar{display:none}
   .word-row{
-    padding:12px 2px;
+    flex:1 1 0;
+    min-height:48px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:0 2px;
     border-bottom:1px solid var(--line);
+    overflow:hidden;
   }
   .word-row:first-child{border-top:1px solid var(--line)}
   .word-row .w{
-    font-size:26px;
+    font-size:23px;
     font-weight:600;
     letter-spacing:-.01em;
-    line-height:1.25;
+    line-height:1.15;
     color:var(--ink);
     word-break:break-word;
   }
   .word-row .m{
-    display:none;
-    font-size:17px;
-    line-height:1.5;
+    visibility:hidden;
+    opacity:0;
+    font-size:14px;
+    line-height:1.3;
     color:var(--ink2);
-    margin-top:7px;
-    padding-bottom:2px;
+    margin-top:1px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    transition:opacity .18s ease;
   }
-  .word-row.open .m{display:block;animation:fadeUp .2s ease both}
+  .word-row.open .m{
+    visibility:visible;
+    opacity:1;
+    animation:fadeUp .18s ease both;
+  }
   @keyframes fadeUp{
     from{opacity:0;transform:translateY(4px)}
     to{opacity:1;transform:none}
@@ -162,10 +185,29 @@
   /* ---------- 底部按钮 ---------- */
   .bottom{
     flex:0 0 auto;
+    display:flex;
+    gap:10px;
     padding:10px 22px calc(18px + env(safe-area-inset-bottom));
   }
+  .prev-btn{
+    flex:0 0 92px;
+    height:56px;
+    border-radius:16px;
+    border:1px solid #E2DFD6;
+    background:transparent;
+    color:var(--ink2);
+    font-size:15px;
+    font-weight:500;
+    letter-spacing:.02em;
+    cursor:pointer;
+    transition:opacity .15s ease;
+  }
+  .prev-btn:disabled{opacity:.35;cursor:default}
+  .prev-btn:active:not(:disabled){background:#F5F3EC}
   .primary{
-    width:100%;height:56px;
+    flex:1 1 auto;
+    width:auto;
+    height:56px;
     border:0;border-radius:16px;
     background:var(--ink);color:#fff;
     font-size:16px;font-weight:600;letter-spacing:.04em;
@@ -316,6 +358,7 @@
   </main>
 
   <footer class="bottom" id="bottomBar">
+    <button class="prev-btn" id="prevBtn" type="button" disabled>上一页</button>
     <button class="primary" id="actionBtn" type="button">显示下一个释义</button>
   </footer>
 
@@ -670,6 +713,7 @@
     doneSub: $('doneSub'),
     doneActions: $('doneActions'),
     bottomBar: $('bottomBar'),
+    prevBtn: $('prevBtn'),
     actionBtn: $('actionBtn'),
     reviewBtn: $('reviewBtn'),
     scrim: $('scrim'),
@@ -790,11 +834,50 @@
     revealed++;
     updateMeta();
     updateAction();
-    li.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  function openAll() {
+    for (var i = 0; i < rows.length; i++) {
+      var li = el.wordList.children[i];
+      if (li) li.classList.add('open');
+    }
+    revealed = rows.length;
+    updateMeta();
+    updateAction();
+  }
+
+  function updatePrev() {
+    var dis = true;
+    if (mode === 'review') {
+      dis = view.chunk <= 0;
+    } else if (mode === 'learn') {
+      var day = daySize();
+      var dayNo = Math.floor(state.cursor / day) + 1;
+      var dayStart = (dayNo - 1) * day;
+      dis = state.cursor <= dayStart;
+    }
+    el.prevBtn.disabled = dis;
+  }
+
+  function goPrev() {
+    if (mode === 'review') {
+      if (view.chunk <= 0) return;
+      view.chunk--;
+      renderReviewChunk(true);
+      return;
+    }
+    if (mode !== 'learn') return;
+    var day = daySize();
+    var dayNo = Math.floor(state.cursor / day) + 1;
+    var dayStart = (dayNo - 1) * day;
+    if (state.cursor <= dayStart) return;
+    state.cursor = Math.max(dayStart, state.cursor - GROUP);
+    save();
+    renderLearnGroup(true);
   }
 
   /* ---------- 学新词 ---------- */
-  function renderLearnGroup() {
+  function renderLearnGroup(revealAll) {
     mode = 'learn';
     review = null;
 
@@ -830,6 +913,8 @@
     renderRows();
     updateMeta();
     updateAction();
+    updatePrev();
+    if (revealAll) openAll();
   }
 
   /* ---------- 复习 ---------- */
@@ -857,7 +942,7 @@
     renderReviewChunk();
   }
 
-  function renderReviewChunk() {
+  function renderReviewChunk(revealAll) {
     mode = 'review';
 
     var from = view.chunk * GROUP;
@@ -881,6 +966,8 @@
     renderRows();
     updateMeta();
     updateAction();
+    updatePrev();
+    if (revealAll) openAll();
   }
 
   function showReviewDone() {
@@ -1102,6 +1189,7 @@
 
   /* ---------- 事件 ---------- */
   el.actionBtn.addEventListener('click', onAction);
+  el.prevBtn.addEventListener('click', goPrev);
   el.reviewBtn.addEventListener('click', openDaySheet);
   el.closeSheet.addEventListener('click', closeSheets);
   el.scrim.addEventListener('click', closeSheets);
@@ -1130,6 +1218,11 @@
   });
 
   document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      if (!el.prevBtn.disabled && !el.bottomBar.hidden) goPrev();
+      return;
+    }
     if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter' || e.key === 'ArrowRight') {
       e.preventDefault();
       if (!el.bottomBar.hidden) onAction();

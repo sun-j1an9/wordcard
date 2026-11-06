@@ -1,6 +1,6 @@
 /* 背单词 · Service Worker
    更新页面后，把 CACHE 版本号 +1，用户下次打开会自动换新 */
-const CACHE = 'wordcard-v2';
+const CACHE = 'wordcard-v3';
 
 const ASSETS = [
   './',
