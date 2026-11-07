@@ -836,16 +836,6 @@
     updateAction();
   }
 
-  function openAll() {
-    for (var i = 0; i < rows.length; i++) {
-      var li = el.wordList.children[i];
-      if (li) li.classList.add('open');
-    }
-    revealed = rows.length;
-    updateMeta();
-    updateAction();
-  }
-
   function updatePrev() {
     var dis = true;
     if (mode === 'review') {
@@ -863,7 +853,7 @@
     if (mode === 'review') {
       if (view.chunk <= 0) return;
       view.chunk--;
-      renderReviewChunk(true);
+      renderReviewChunk();
       return;
     }
     if (mode !== 'learn') return;
@@ -873,11 +863,11 @@
     if (state.cursor <= dayStart) return;
     state.cursor = Math.max(dayStart, state.cursor - GROUP);
     save();
-    renderLearnGroup(true);
+    renderLearnGroup();
   }
 
   /* ---------- 学新词 ---------- */
-  function renderLearnGroup(revealAll) {
+  function renderLearnGroup() {
     mode = 'learn';
     review = null;
 
@@ -914,7 +904,6 @@
     updateMeta();
     updateAction();
     updatePrev();
-    if (revealAll) openAll();
   }
 
   /* ---------- 复习 ---------- */
@@ -942,7 +931,7 @@
     renderReviewChunk();
   }
 
-  function renderReviewChunk(revealAll) {
+  function renderReviewChunk() {
     mode = 'review';
 
     var from = view.chunk * GROUP;
@@ -967,7 +956,6 @@
     updateMeta();
     updateAction();
     updatePrev();
-    if (revealAll) openAll();
   }
 
   function showReviewDone() {
